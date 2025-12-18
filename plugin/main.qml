@@ -94,7 +94,6 @@ Item {
     color: root.cardBg
     border.color: root.border
     border.width: 1
-    padding: 15
   }
 
   component H1: Text {
