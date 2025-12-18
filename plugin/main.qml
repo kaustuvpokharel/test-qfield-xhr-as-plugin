@@ -7,19 +7,17 @@ import org.qfield
 Item {
   id: root
 
-  // --- simple log model for "track errors / mismatches"
+  // logging
   ListModel { id: logModel }
 
   function ts() {
-    // ISO-ish time, local
     const d = new Date()
-    function pad(n){ return (n<10 ? "0" : "") + n }
+    const pad = (n) => (n < 10 ? "0" : "") + n
     return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds())
   }
 
   function log(msg) {
     logModel.append({ t: ts(), m: String(msg) })
-    // also log to console to catch plugin/runtime issues
     console.log("[XHR Tester]", msg)
   }
 
@@ -34,16 +32,16 @@ Item {
     }
   }
 
-  // --- Create the XHR object dynamically so we can "Reset" it completely
+  // ------------ XHR instance (resettable) ------------
   property var xhr: null
 
   Component {
     id: xhrComponent
 
     XmlHttpRequest {
-      // NOTE: these are *properties* backed by QJSValue in C++
+      // properties backed by QJSValue in C++
       onreadystatechange: function() {
-        root.log("onreadystatechange: readyState=" + root.readyStateName(readyState) + " (" + readyState + "), status=" + status)
+        root.log("onreadystatechange: state=" + root.readyStateName(readyState) + " (" + readyState + "), status=" + status)
       }
       ondownloadprogress: function(received, total) {
         root.log("ondownloadprogress: " + received + " / " + total)
@@ -81,14 +79,158 @@ Item {
     ensureXhr()
   }
 
-  // --- UI: attach to toolbar, open a popup panel
+  // ------------ tiny dark UI helpers ------------
+  readonly property color bg: "#121212"
+  readonly property color card: "#1a1a1a"
+  readonly property color field: "#0f0f0f"
+  readonly property color border: "#2b2b2b"
+  readonly property color fg: "#f3f3f3"
+  readonly property color muted: "#b8b8b8"
+  readonly property color accent: "#7CFC00" // “debug green”
+  readonly property int r: 10
+
+  component Card : Frame {
+    Layout.fillWidth: true
+    padding: 12
+    background: Rectangle {
+      radius: root.r
+      color: root.card
+      border.color: root.border
+      border.width: 1
+    }
+  }
+
+  component H2 : Label {
+    color: root.fg
+    font.pixelSize: 16
+    font.bold: true
+    elide: Label.ElideRight
+  }
+
+  component H3 : Label {
+    color: root.fg
+    font.pixelSize: 13
+    font.bold: true
+    elide: Label.ElideRight
+  }
+
+  component HelpText : Label {
+    Layout.fillWidth: true
+    color: root.muted
+    wrapMode: Label.Wrap
+    font.pixelSize: 12
+  }
+
+  component DarkButton : Button {
+    Layout.preferredHeight: 40
+    contentItem: Label {
+      text: parent.text
+      color: root.fg
+      font.pixelSize: 13
+      horizontalAlignment: Text.AlignHCenter
+      verticalAlignment: Text.AlignVCenter
+      elide: Label.ElideRight
+    }
+    background: Rectangle {
+      radius: 999
+      color: parent.down ? "#2b2b2b" : "#222222"
+      border.color: parent.hovered ? root.accent : root.border
+      border.width: 1
+    }
+  }
+
+  component DarkTextField : TextField {
+    Layout.preferredHeight: 40
+    color: root.fg
+    placeholderTextColor: "#7c7c7c"
+    selectByMouse: true
+    background: Rectangle {
+      radius: 8
+      color: root.field
+      border.color: parent.activeFocus ? root.accent : root.border
+      border.width: 1
+    }
+  }
+
+  component DarkTextArea : TextArea {
+    color: root.fg
+    placeholderTextColor: "#7c7c7c"
+    selectByMouse: true
+    wrapMode: TextArea.Wrap
+    background: Rectangle {
+      radius: 8
+      color: root.field
+      border.color: parent.activeFocus ? root.accent : root.border
+      border.width: 1
+    }
+  }
+
+  component DarkComboBox : ComboBox {
+    Layout.preferredHeight: 40
+    contentItem: Label {
+      text: parent.displayText
+      color: root.fg
+      verticalAlignment: Text.AlignVCenter
+      leftPadding: 10
+      elide: Label.ElideRight
+    }
+    background: Rectangle {
+      radius: 8
+      color: root.field
+      border.color: parent.activeFocus ? root.accent : root.border
+      border.width: 1
+    }
+    indicator: Canvas {
+      width: 14; height: 14
+      anchors.right: parent.right
+      anchors.rightMargin: 10
+      anchors.verticalCenter: parent.verticalCenter
+      onPaint: {
+        const ctx = getContext("2d")
+        ctx.clearRect(0,0,width,height)
+        ctx.beginPath()
+        ctx.moveTo(2,4); ctx.lineTo(12,4); ctx.lineTo(7,10); ctx.closePath()
+        ctx.fillStyle = root.fg
+        ctx.fill()
+      }
+    }
+    popup: Popup {
+      y: parent.height + 4
+      width: parent.width
+      implicitHeight: Math.min(contentItem.implicitHeight + 8, 260)
+      background: Rectangle {
+        radius: 8
+        color: root.card
+        border.color: root.border
+        border.width: 1
+      }
+      contentItem: ListView {
+        clip: true
+        model: parent.delegateModel
+        currentIndex: parent.highlightedIndex
+        delegate: ItemDelegate {
+          width: ListView.view.width
+          text: modelData
+          contentItem: Label {
+            text: parent.text
+            color: root.fg
+            elide: Label.ElideRight
+          }
+          background: Rectangle {
+            color: parent.highlighted ? "#2a2a2a" : "transparent"
+          }
+        }
+      }
+    }
+  }
+
+  // ------------ UI entry button ------------
   Rectangle {
     id: toolbarButton
-    width: 40
-    height: 40
-    radius: 6
+    width: 40; height: 40
+    radius: 8
     color: "#2b2b2b"
-    border.color: "#d0d0d0"
+    border.color: "#cfcfcf"
     border.width: 1
 
     Text {
@@ -108,337 +250,324 @@ Item {
     }
   }
 
+  // main panel
   Popup {
     id: panel
     parent: iface.mainWindow().contentItem
-    modal: false
+    modal: true
     focus: true
 
-    // keep it usable on both phone + desktop
-    width: Math.min(parent.width * 0.95, 740)
-    height: Math.min(parent.height * 0.95, 820)
+    width: Math.min(parent.width * 0.96, 860)
+    height: Math.min(parent.height * 0.96, 920)
     x: Math.round((parent.width - width) / 2)
     y: Math.round((parent.height - height) / 2)
 
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     background: Rectangle {
-      color: "#151515"
-      radius: 10
-      border.color: "#404040"
+      color: root.bg
+      radius: 14
+      border.color: root.border
       border.width: 1
     }
 
+    Overlay.modal: Rectangle { color: "#000000"; opacity: 0.55 }
+
     ColumnLayout {
       anchors.fill: parent
-      anchors.margins: 12
-      spacing: 10
+      anchors.margins: 14
+      spacing: 12
 
-      // Header
-      RowLayout {
-        Layout.fillWidth: true
-        spacing: 8
-
-        Label {
-          Layout.fillWidth: true
-          text: "QField XmlHttpRequest — Test Panel"
-          color: "white"
-          font.pixelSize: 18
-          font.bold: true
-          elide: Label.ElideRight
-        }
-
-        Button {
-          text: "Reset XHR"
-          onClicked: resetXhr()
-        }
-        Button {
-          text: "Close"
-          onClicked: panel.close()
-        }
-      }
-
-      // Request settings
-      GroupBox {
-        Layout.fillWidth: true
-        title: "Request"
-        label: Label { text: parent.title; color: "white"; font.bold: true }
-
-        ColumnLayout {
-          anchors.fill: parent
-          spacing: 8
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            ComboBox {
-              id: methodBox
-              model: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
-              Layout.preferredWidth: 140
-            }
-
-            TextField {
-              id: urlField
-              Layout.fillWidth: true
-              placeholderText: "URL (e.g. https://httpbin.org/anything)"
-              text: "https://httpbin.org/anything"
-            }
-
-            TextField {
-              id: timeoutField
-              Layout.preferredWidth: 140
-              inputMethodHints: Qt.ImhDigitsOnly
-              placeholderText: "timeout ms"
-              text: "0"
-              ToolTip.visible: hovered
-              ToolTip.text: "Set XmlHttpRequest.timeout (0 disables)."
-            }
-          }
-
-          TextArea {
-            id: headersArea
-            Layout.fillWidth: true
-            Layout.preferredHeight: 70
-            wrapMode: TextArea.Wrap
-            placeholderText: "Headers (one per line):\nAuthorization: Bearer ...\nContent-Type: application/json"
-            text: ""
-          }
-        }
-      }
-
-      // Body + Upload
+      // header
       RowLayout {
         Layout.fillWidth: true
         spacing: 10
 
-        GroupBox {
-          Layout.fillWidth: true
-          Layout.preferredWidth: 420
-          title: "Body (JSON/Text)"
-          label: Label { text: parent.title; color: "white"; font.bold: true }
+        H2 { Layout.fillWidth: true; text: "XmlHttpRequest Tester" }
 
-          ColumnLayout {
-            anchors.fill: parent
-            spacing: 8
+        DarkButton { text: "Reset XHR"; onClicked: resetXhr() }
+        DarkButton { text: "Close"; onClicked: panel.close() }
+      }
 
-            TextArea {
-              id: bodyArea
-              Layout.fillWidth: true
-              Layout.preferredHeight: 150
-              wrapMode: TextArea.Wrap
-              placeholderText: "Body as raw text.\nTip: for JSON, paste JSON text."
-              text: "{\n  \"hello\": \"qfield\",\n  \"when\": \"" + (new Date()).toISOString() + "\"\n}"
-            }
+      HelpText {
+        text:
+          "Goal: validate core XmlHttpRequest behavior (readyState, headers, JSON/text, redirect, timeout, abort, multipart).\n" +
+          "Tip: if text inside fields is invisible, you are still running an old plugin zip — uninstall/reinstall and restart QField."
+      }
 
-            RowLayout {
-              Layout.fillWidth: true
-              spacing: 8
+      // scrollable content (prevents layouts from collapsing/overlapping on small screens)
+      ScrollView {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        clip: true
 
-              Button {
-                text: "Send (text/json)"
-                onClicked: {
-                  ensureXhr()
-                  root.sendTextOrJson()
-                }
-              }
+        contentItem: ColumnLayout {
+          width: panel.width - 28
+          spacing: 12
 
-              Button {
-                text: "Test redirect"
-                onClicked: {
-                  ensureXhr()
-                  urlField.text = "https://httpbin.org/redirect/1"
-                  methodBox.currentIndex = 0 // GET
-                  bodyArea.text = ""
-                  root.sendTextOrJson()
-                }
-              }
+          // REQUEST
+          Card {
+            ColumnLayout {
+              spacing: 10
+              H3 { text: "Request" }
 
-              Button {
-                text: "Test timeout"
-                onClicked: {
-                  ensureXhr()
-                  urlField.text = "https://httpbin.org/delay/5"
-                  methodBox.currentIndex = 0 // GET
-                  timeoutField.text = "1000"
-                  bodyArea.text = ""
-                  root.sendTextOrJson()
-                }
-              }
-            }
-          }
-        }
-
-        GroupBox {
-          Layout.fillWidth: true
-          title: "Multipart upload"
-          label: Label { text: parent.title; color: "white"; font.bold: true }
-
-          ColumnLayout {
-            anchors.fill: parent
-            spacing: 8
-
-            RowLayout {
-              Layout.fillWidth: true
-              spacing: 8
-
-              TextField {
-                id: fileField
+              GridLayout {
+                columns: 3
+                columnSpacing: 10
+                rowSpacing: 10
                 Layout.fillWidth: true
-                placeholderText: "File URL (file:///...)"
+
+                DarkComboBox {
+                  id: methodBox
+                  model: ["GET", "POST", "PUT", "DELETE", "HEAD"]
+                  Layout.preferredWidth: 140
+                }
+
+                DarkTextField {
+                  id: urlField
+                  Layout.fillWidth: true
+                  placeholderText: "https://httpbin.org/anything"
+                  text: "https://httpbin.org/anything"
+                }
+
+                DarkTextField {
+                  id: timeoutField
+                  Layout.preferredWidth: 140
+                  inputMethodHints: Qt.ImhDigitsOnly
+                  placeholderText: "timeout ms (0 = off)"
+                  text: "0"
+                }
+              }
+
+              DarkTextArea {
+                id: headersArea
+                Layout.fillWidth: true
+                Layout.preferredHeight: 90
+                placeholderText: "Headers (one per line)\nExample:\nContent-Type: application/json\nAuthorization: Bearer <token>"
                 text: ""
               }
 
-              Button {
-                text: "Pick…"
-                onClicked: fileDialog.open()
+              RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                DarkButton {
+                  Layout.fillWidth: true
+                  text: "Send (text/json)"
+                  onClicked: { ensureXhr(); root.sendTextOrJson() }
+                }
+
+                DarkButton {
+                  text: "GET /get"
+                  onClicked: {
+                    ensureXhr()
+                    methodBox.currentIndex = 0
+                    urlField.text = "https://httpbin.org/get"
+                    timeoutField.text = "0"
+                    headersArea.text = ""
+                    bodyArea.text = ""
+                    root.sendTextOrJson()
+                  }
+                }
+
+                DarkButton {
+                  text: "Redirect"
+                  onClicked: {
+                    ensureXhr()
+                    methodBox.currentIndex = 0
+                    urlField.text = "https://httpbin.org/redirect/1"
+                    timeoutField.text = "0"
+                    headersArea.text = ""
+                    bodyArea.text = ""
+                    root.sendTextOrJson()
+                  }
+                }
+
+                DarkButton {
+                  text: "Timeout"
+                  onClicked: {
+                    ensureXhr()
+                    methodBox.currentIndex = 0
+                    urlField.text = "https://httpbin.org/delay/5"
+                    timeoutField.text = "1000"
+                    headersArea.text = ""
+                    bodyArea.text = ""
+                    root.sendTextOrJson()
+                  }
+                }
+
+                DarkButton { text: "Abort"; onClicked: { if (xhr) xhr.abort() } }
+              }
+            }
+          }
+
+          // BODY + MULTIPART
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Card {
+              Layout.fillWidth: true
+              ColumnLayout {
+                spacing: 10
+                H3 { text: "Body (Text / JSON)" }
+                DarkTextArea {
+                  id: bodyArea
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 210
+                  placeholderText: "If POST/PUT: paste JSON here (string)."
+                  text: "{\n  \"hello\": \"qfield\",\n  \"when\": \"" + (new Date()).toISOString() + "\"\n}"
+                }
+                HelpText {
+                  text:
+                    "This button sends the body as a raw string (no QVariantMap conversion). " +
+                    "If you want JSON parsing in C++, set Content-Type: application/json and return JSON from server."
+                }
               }
             }
 
-            TextField {
-              id: uploadNameField
+            Card {
               Layout.fillWidth: true
-              placeholderText: "form field name for file (default: file)"
-              text: "file"
-            }
+              ColumnLayout {
+                spacing: 10
+                H3 { text: "Multipart upload" }
 
-            TextField {
-              id: uploadNoteField
-              Layout.fillWidth: true
-              placeholderText: "extra field (note)"
-              text: "Hello from QField plugin"
-            }
+                HelpText {
+                  text:
+                    "Important: core XmlHttpRequest blocks uploading arbitrary local files for safety.\n" +
+                    "To test multipart: copy the file INTO the current QField project folder (or QFieldCloud local folder) and pick it from there."
+                }
 
-            RowLayout {
-              Layout.fillWidth: true
+                RowLayout {
+                  Layout.fillWidth: true
+                  spacing: 10
+                  DarkTextField {
+                    id: fileField
+                    Layout.fillWidth: true
+                    placeholderText: "Picked file URL (file:///...)"
+                    text: ""
+                  }
+                  DarkButton { text: "Pick…"; onClicked: fileDialog.open() }
+                }
+
+                RowLayout {
+                  Layout.fillWidth: true
+                  spacing: 10
+                  DarkTextField {
+                    id: uploadNameField
+                    Layout.fillWidth: true
+                    placeholderText: "file field name"
+                    text: "file"
+                  }
+                  DarkTextField {
+                    id: uploadNoteField
+                    Layout.fillWidth: true
+                    placeholderText: "note"
+                    text: "Hello from QField plugin"
+                  }
+                }
+
+                RowLayout {
+                  Layout.fillWidth: true
+                  spacing: 10
+                  DarkButton {
+                    Layout.fillWidth: true
+                    text: "Upload to httpbin.org/post"
+                    onClicked: {
+                      ensureXhr()
+                      methodBox.currentIndex = 1 // POST
+                      urlField.text = "https://httpbin.org/post"
+                      root.sendMultipart()
+                    }
+                  }
+                  DarkButton { text: "Abort"; onClicked: { if (xhr) xhr.abort() } }
+                }
+              }
+            }
+          }
+
+          // RESPONSE
+          Card {
+            ColumnLayout {
               spacing: 8
+              H3 { text: "Response" }
 
-              Button {
-                text: "Upload to httpbin.org/post"
-                onClicked: {
-                  ensureXhr()
-                  urlField.text = "https://httpbin.org/post"
-                  methodBox.currentIndex = 1 // POST
-                  root.sendMultipart()
+              RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+                Label {
+                  Layout.fillWidth: true
+                  color: root.fg
+                  text: xhr ? ("status: " + xhr.status + " " + xhr.statusText) : "status: (no xhr)"
+                  elide: Label.ElideRight
+                }
+                Label {
+                  Layout.fillWidth: true
+                  color: root.muted
+                  text: xhr ? ("type: " + xhr.responseType) : ""
+                  horizontalAlignment: Text.AlignRight
+                  elide: Label.ElideRight
                 }
               }
 
-              Button {
-                text: "Abort"
-                onClicked: {
-                  if (xhr) xhr.abort()
+              Label {
+                Layout.fillWidth: true
+                color: root.muted
+                text: xhr ? ("url: " + xhr.responseUrl) : ""
+                elide: Label.ElideRight
+              }
+
+              ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 220
+                clip: true
+                contentItem: DarkTextArea {
+                  readOnly: true
+                  text: xhr ? xhr.responseText : ""
                 }
               }
             }
-
-            Label {
-              Layout.fillWidth: true
-              wrapMode: Label.Wrap
-              color: "#b0b0b0"
-              text: "Note: multipart upload expects your C++ XmlHttpRequest to treat local file URLs (file:///...) as file parts."
-            }
-          }
-        }
-      }
-
-      // Response
-      GroupBox {
-        Layout.fillWidth: true
-        title: "Response"
-        label: Label { text: parent.title; color: "white"; font.bold: true }
-
-        ColumnLayout {
-          anchors.fill: parent
-          spacing: 6
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
-
-            Label {
-              Layout.fillWidth: true
-              color: "white"
-              text: xhr ? ("status: " + xhr.status + " " + xhr.statusText) : "status: (no xhr)"
-              elide: Label.ElideRight
-            }
-
-            Label {
-              Layout.fillWidth: true
-              color: "#c0c0c0"
-              text: xhr ? ("type: " + xhr.responseType) : ""
-              elide: Label.ElideRight
-              horizontalAlignment: Text.AlignRight
-            }
           }
 
-          Label {
-            Layout.fillWidth: true
-            color: "#c0c0c0"
-            text: xhr ? ("url: " + xhr.responseUrl) : ""
-            elide: Label.ElideRight
-          }
+          // LOG
+          Card {
+            ColumnLayout {
+              spacing: 10
+              H3 { text: "Event log" }
 
-          ScrollView {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 160
+              RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+                DarkButton { text: "Clear"; onClicked: logModel.clear() }
+                DarkButton { text: "Run mini self-test"; onClicked: root.runSelfTest() }
+                Item { Layout.fillWidth: true }
+                Label {
+                  color: root.muted
+                  text: xhr ? ("readyState: " + root.readyStateName(xhr.readyState)) : ""
+                }
+              }
 
-            TextArea {
-              readOnly: true
-              wrapMode: TextArea.Wrap
-              text: xhr ? xhr.responseText : ""
-            }
-          }
-        }
-      }
+              Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 260
+                radius: 10
+                color: root.field
+                border.color: root.border
+                border.width: 1
 
-      // Log
-      GroupBox {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        title: "Event log"
-        label: Label { text: parent.title; color: "white"; font.bold: true }
-
-        ColumnLayout {
-          anchors.fill: parent
-          spacing: 8
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-            Button {
-              text: "Clear log"
-              onClicked: logModel.clear()
-            }
-            Button {
-              text: "Run mini self-test"
-              onClicked: root.runSelfTest()
-            }
-            Item { Layout.fillWidth: true }
-            Label {
-              color: "#b0b0b0"
-              text: xhr ? ("readyState: " + root.readyStateName(xhr.readyState)) : ""
-            }
-          }
-
-          Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            radius: 6
-            color: "#0f0f0f"
-            border.color: "#303030"
-            border.width: 1
-
-            ListView {
-              anchors.fill: parent
-              anchors.margins: 6
-              model: logModel
-              clip: true
-              delegate: Text {
-                width: ListView.view.width
-                color: "white"
-                font.pixelSize: 12
-                text: "[" + t + "] " + m
-                wrapMode: Text.Wrap
+                ListView {
+                  anchors.fill: parent
+                  anchors.margins: 8
+                  model: logModel
+                  clip: true
+                  delegate: Text {
+                    width: ListView.view.width
+                    color: root.fg
+                    font.pixelSize: 12
+                    text: "[" + t + "] " + m
+                    wrapMode: Text.Wrap
+                  }
+                }
               }
             }
           }
@@ -454,13 +583,12 @@ Item {
     id: fileDialog
     title: "Pick a file to upload"
     onAccepted: {
-      // QtQuick.Dialogs FileDialog (Qt6) gives selectedFile as url
       fileField.text = selectedFile.toString()
       root.log("Picked file: " + fileField.text)
     }
   }
 
-  // --- Helpers to send requests
+  //request helpers
   function applyHeaders() {
     const lines = headersArea.text.split("\n")
     for (let i = 0; i < lines.length; i++) {
@@ -490,7 +618,6 @@ Item {
 
     applyHeaders()
 
-    // If user did not specify Content-Type, default to application/json for non-empty bodies
     const hasCT = headersArea.text.toLowerCase().indexOf("content-type:") !== -1
     const body = bodyArea.text
 
@@ -498,7 +625,6 @@ Item {
       xhr.setRequestHeader("Content-Type", "application/json")
     }
 
-    // NOTE: send as raw string; this avoids QVariantMap conversion ambiguities in C++.
     xhr.send(body)
   }
 
@@ -522,10 +648,11 @@ Item {
 
     applyHeaders()
 
-    // Force multipart (your C++ checks for multipart/form-data)
-    xhr.setRequestHeader("Content-Type", "multipart/form-data")
+    // DO NOT force Content-Type: multipart/form-data here.
+    // If you set it without boundary, some stacks get confused.
+    // Core will auto-switch to multipart when it sees file:// values.
+    // xhr.setRequestHeader("Content-Type", "multipart/form-data")
 
-    // Body is a JS object -> QVariantMap in C++
     const body = {}
     body[uploadNameField.text.trim() || "file"] = fileUrl
     body["note"] = uploadNoteField.text
@@ -534,11 +661,11 @@ Item {
     xhr.send(body)
   }
 
-  // Small guided self-test that hits 3 endpoints
+  // mini self-test
   property int selfTestStep: 0
   Timer {
     id: selfTestTimer
-    interval: 200
+    interval: 250
     repeat: false
     onTriggered: root.nextSelfTestStep()
   }
@@ -552,12 +679,11 @@ Item {
 
   function nextSelfTestStep() {
     if (!xhr) return
-
     selfTestStep += 1
 
     if (selfTestStep === 1) {
-      urlField.text = "https://httpbin.org/get"
       methodBox.currentIndex = 0
+      urlField.text = "https://httpbin.org/get"
       timeoutField.text = "0"
       headersArea.text = ""
       bodyArea.text = ""
@@ -567,9 +693,8 @@ Item {
     }
 
     if (selfTestStep === 2) {
-      // redirect test
-      urlField.text = "https://httpbin.org/redirect/1"
       methodBox.currentIndex = 0
+      urlField.text = "https://httpbin.org/redirect/1"
       timeoutField.text = "0"
       headersArea.text = ""
       bodyArea.text = ""
@@ -579,9 +704,8 @@ Item {
     }
 
     if (selfTestStep === 3) {
-      // timeout test (delay 5s, timeout 1s)
-      urlField.text = "https://httpbin.org/delay/5"
       methodBox.currentIndex = 0
+      urlField.text = "https://httpbin.org/delay/5"
       timeoutField.text = "1000"
       headersArea.text = ""
       bodyArea.text = ""
@@ -593,7 +717,7 @@ Item {
     log("=== self-test queued requests done (watch log for callbacks) ===")
   }
 
-  // Bind to C++ signals too (this catches cases where QJSValue properties don't fire)
+  // Signals (in case QJSValue callback properties don't fire)
   Connections {
     target: xhr
     function onReadyStateChanged() {
@@ -606,9 +730,7 @@ Item {
   }
 
   Component.onCompleted: {
-    // plugin entrypoint
     iface.mainWindow().displayToast("XHR Tester plugin loaded")
-    // add toolbar entry
     iface.addItemToPluginsToolbar(toolbarButton)
     ensureXhr()
     log("Plugin loaded; toolbar button added")
