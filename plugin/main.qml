@@ -1,13 +1,21 @@
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Layouts
 import QtQuick.Dialogs
 import org.qfield
 
 Item {
   id: root
+  readonly property color bg: "#121212"
+  readonly property color panelBg: "#181818"
+  readonly property color cardBg: "#1f1f1f"
+  readonly property color border: "#343434"
+  readonly property color fg: "#f2f2f2"
+  readonly property color muted: "#b7b7b7"
+  readonly property color accent: "#7CFC00"
 
-  // logging
+  readonly property bool narrow: (panel.visible ? panel.width : 0) < 720
+
   ListModel { id: logModel }
 
   function ts() {
@@ -32,16 +40,13 @@ Item {
     }
   }
 
-  // ------------ XHR instance (resettable) ------------
   property var xhr: null
 
   Component {
     id: xhrComponent
-
     XmlHttpRequest {
-      // properties backed by QJSValue in C++
       onreadystatechange: function() {
-        root.log("onreadystatechange: state=" + root.readyStateName(readyState) + " (" + readyState + "), status=" + status)
+        root.log("onreadystatechange: " + root.readyStateName(readyState) + " (" + readyState + "), status=" + status)
       }
       ondownloadprogress: function(received, total) {
         root.log("ondownloadprogress: " + received + " / " + total)
@@ -77,108 +82,102 @@ Item {
       xhr = null
     }
     ensureXhr()
+    logModel.clear()
+    root.log("Reset complete")
   }
 
-  // ------------ tiny dark UI helpers ------------
-  readonly property color bg: "#121212"
-  readonly property color card: "#1a1a1a"
-  readonly property color field: "#0f0f0f"
-  readonly property color border: "#2b2b2b"
-  readonly property color fg: "#f3f3f3"
-  readonly property color muted: "#b8b8b8"
-  readonly property color accent: "#7CFC00" // “debug green”
-  readonly property int r: 10
-
-  component Card : Frame {
-    Layout.fillWidth: true
-    padding: 12
-    background: Rectangle {
-      radius: root.r
-      color: root.card
-      border.color: root.border
-      border.width: 1
-    }
+  // ---------------- UI components ----------------
+  component Card: Rectangle {
+    radius: 12
+    color: root.cardBg
+    border.color: root.border
+    border.width: 1
   }
 
-  component H2 : Label {
+  component H1: Text {
+    color: root.fg
+    font.pixelSize: 22
+    font.bold: true
+    wrapMode: Text.Wrap
+    elide: Text.ElideRight
+  }
+
+  component H2: Text {
     color: root.fg
     font.pixelSize: 16
     font.bold: true
-    elide: Label.ElideRight
+    wrapMode: Text.Wrap
   }
 
-  component H3 : Label {
-    color: root.fg
-    font.pixelSize: 13
-    font.bold: true
-    elide: Label.ElideRight
-  }
-
-  component HelpText : Label {
-    Layout.fillWidth: true
+  component BodyText: Text {
     color: root.muted
-    wrapMode: Label.Wrap
     font.pixelSize: 12
+    wrapMode: Text.Wrap
   }
 
-  component DarkButton : Button {
-    Layout.preferredHeight: 40
-    contentItem: Label {
-      text: parent.text
-      color: root.fg
-      font.pixelSize: 13
-      horizontalAlignment: Text.AlignHCenter
-      verticalAlignment: Text.AlignVCenter
-      elide: Label.ElideRight
-    }
-    background: Rectangle {
-      radius: 999
-      color: parent.down ? "#2b2b2b" : "#222222"
-      border.color: parent.hovered ? root.accent : root.border
-      border.width: 1
-    }
-  }
-
-  component DarkTextField : TextField {
-    Layout.preferredHeight: 40
+  component FieldText: TextField {
+    padding: 10
     color: root.fg
-    placeholderTextColor: "#7c7c7c"
-    selectByMouse: true
+    placeholderTextColor: root.muted
+    selectionColor: "#355f1a"
+    selectedTextColor: root.fg
     background: Rectangle {
-      radius: 8
-      color: root.field
+      radius: 10
+      color: "#141414"
       border.color: parent.activeFocus ? root.accent : root.border
       border.width: 1
     }
   }
 
-  component DarkTextArea : TextArea {
+  component FieldArea: TextArea {
+    padding: 10
     color: root.fg
-    placeholderTextColor: "#7c7c7c"
-    selectByMouse: true
+    placeholderTextColor: root.muted
+    selectionColor: "#355f1a"
+    selectedTextColor: root.fg
     wrapMode: TextArea.Wrap
     background: Rectangle {
-      radius: 8
-      color: root.field
+      radius: 10
+      color: "#141414"
       border.color: parent.activeFocus ? root.accent : root.border
       border.width: 1
     }
   }
 
-  component DarkComboBox : ComboBox {
-    Layout.preferredHeight: 40
-    contentItem: Label {
+  component PillButton: Button {
+    font.pixelSize: 13
+    implicitHeight: 38
+    background: Rectangle {
+      radius: 999
+      color: parent.down ? "#2a2a2a" : "#222"
+      border.color: parent.hovered || parent.activeFocus ? root.accent : root.border
+      border.width: 1
+    }
+    contentItem: Text {
+      text: parent.text
+      color: root.fg
+      horizontalAlignment: Text.AlignHCenter
+      verticalAlignment: Text.AlignVCenter
+      elide: Text.ElideRight
+    }
+  }
+
+  component NiceCombo: ComboBox {
+    padding: 10
+    implicitHeight: 42
+    background: Rectangle {
+      radius: 10
+      color: "#141414"
+      border.color: parent.activeFocus ? root.accent : root.border
+      border.width: 1
+    }
+    contentItem: Text {
       text: parent.displayText
       color: root.fg
       verticalAlignment: Text.AlignVCenter
-      leftPadding: 10
-      elide: Label.ElideRight
-    }
-    background: Rectangle {
-      radius: 8
-      color: root.field
-      border.color: parent.activeFocus ? root.accent : root.border
-      border.width: 1
+      elide: Text.ElideRight
+      leftPadding: 8
+      rightPadding: 24
     }
     indicator: Canvas {
       width: 14; height: 14
@@ -195,48 +194,38 @@ Item {
       }
     }
     popup: Popup {
-      y: parent.height + 4
+      y: parent.height + 6
       width: parent.width
-      implicitHeight: Math.min(contentItem.implicitHeight + 8, 260)
-      background: Rectangle {
-        radius: 8
-        color: root.card
-        border.color: root.border
-        border.width: 1
-      }
+      implicitHeight: Math.min(contentItem.implicitHeight, 280)
+      background: Rectangle { radius: 10; color: "#1a1a1a"; border.color: root.border; border.width: 1 }
       contentItem: ListView {
         clip: true
-        model: parent.delegateModel
+        implicitHeight: contentHeight
+        model: parent.popup.visible ? parent.delegateModel : null
         currentIndex: parent.highlightedIndex
         delegate: ItemDelegate {
           width: ListView.view.width
           text: modelData
-          contentItem: Label {
-            text: parent.text
-            color: root.fg
-            elide: Label.ElideRight
-          }
-          background: Rectangle {
-            color: parent.highlighted ? "#2a2a2a" : "transparent"
-          }
+          highlighted: index === parent.highlightedIndex
         }
       }
     }
   }
 
-  // ------------ UI entry button ------------
+  // toolbar button
   Rectangle {
     id: toolbarButton
-    width: 40; height: 40
-    radius: 8
+    width: 40
+    height: 40
+    radius: 10
     color: "#2b2b2b"
-    border.color: "#cfcfcf"
+    border.color: root.border
     border.width: 1
 
     Text {
       anchors.centerIn: parent
       text: "XHR"
-      color: "white"
+      color: root.fg
       font.bold: true
       font.pixelSize: 12
     }
@@ -250,310 +239,419 @@ Item {
     }
   }
 
-  // main panel
   Popup {
     id: panel
     parent: iface.mainWindow().contentItem
     modal: true
     focus: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    width: Math.min(parent.width * 0.96, 860)
-    height: Math.min(parent.height * 0.96, 920)
+    width: Math.min(parent.width - 16, 920)
+    height: Math.min(parent.height - 16, 920)
     x: Math.round((parent.width - width) / 2)
     y: Math.round((parent.height - height) / 2)
 
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    padding: 0
 
     background: Rectangle {
-      color: root.bg
+      color: root.panelBg
       radius: 14
       border.color: root.border
       border.width: 1
     }
 
-    Overlay.modal: Rectangle { color: "#000000"; opacity: 0.55 }
-
-    ColumnLayout {
+    contentItem: Item {
       anchors.fill: parent
-      anchors.margins: 14
-      spacing: 12
 
-      // header
-      RowLayout {
-        Layout.fillWidth: true
-        spacing: 10
-
-        H2 { Layout.fillWidth: true; text: "XmlHttpRequest Tester" }
-
-        DarkButton { text: "Reset XHR"; onClicked: resetXhr() }
-        DarkButton { text: "Close"; onClicked: panel.close() }
-      }
-
-      HelpText {
-        text:
-          "Goal: validate core XmlHttpRequest behavior (readyState, headers, JSON/text, redirect, timeout, abort, multipart).\n" +
-          "Tip: if text inside fields is invisible, you are still running an old plugin zip — uninstall/reinstall and restart QField."
-      }
-
-      // scrollable content (prevents layouts from collapsing/overlapping on small screens)
-      ScrollView {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
+      Flickable {
+        id: flick
+        anchors.fill: parent
+        anchors.margins: 14
         clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        contentWidth: width
+        contentHeight: contentCol.implicitHeight
 
-        contentItem: ColumnLayout {
-          width: panel.width - 28
+        ScrollBar.vertical: ScrollBar {
+          policy: ScrollBar.AlwaysOn
+        }
+
+        Column {
+          id: contentCol
+          width: flick.width
           spacing: 12
 
-          // REQUEST
+          // Header
+          Row {
+            width: parent.width
+            spacing: 10
+
+            Column {
+              width: Math.max(200, parent.width - 240)
+              spacing: 6
+
+              H1 { text: "XmlHttpRequest Tester" }
+              BodyText {
+                text: "Goal: validate core XmlHttpRequest behavior (readyState, headers, JSON/text, redirect, timeout, abort, multipart)."
+              }
+            }
+
+            Item { width: 1; height: 1; Layout.fillWidth: true } // harmless spacer
+
+            PillButton {
+              text: "Reset XHR"
+              onClicked: resetXhr()
+            }
+            PillButton {
+              text: "Close"
+              onClicked: panel.close()
+            }
+          }
+
+          // Request card
           Card {
-            ColumnLayout {
+            width: parent.width
+            implicitHeight: reqCol.implicitHeight + 20
+
+            Column {
+              id: reqCol
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 14
               spacing: 10
-              H3 { text: "Request" }
+
+              H2 { text: "Request" }
 
               GridLayout {
-                columns: 3
+                id: reqGrid
+                width: parent.width
+                columns: root.narrow ? 1 : 3
                 columnSpacing: 10
                 rowSpacing: 10
-                Layout.fillWidth: true
 
-                DarkComboBox {
-                  id: methodBox
-                  model: ["GET", "POST", "PUT", "DELETE", "HEAD"]
-                  Layout.preferredWidth: 140
-                }
-
-                DarkTextField {
-                  id: urlField
+                // Method
+                Item {
                   Layout.fillWidth: true
-                  placeholderText: "https://httpbin.org/anything"
-                  text: "https://httpbin.org/anything"
+                  implicitHeight: 42
+                  NiceCombo {
+                    id: methodBox
+                    anchors.fill: parent
+                    model: ["GET","POST","PUT","PATCH","DELETE","HEAD"]
+                    currentIndex: 0
+                  }
                 }
 
-                DarkTextField {
-                  id: timeoutField
-                  Layout.preferredWidth: 140
-                  inputMethodHints: Qt.ImhDigitsOnly
-                  placeholderText: "timeout ms (0 = off)"
-                  text: "0"
+                // URL
+                Item {
+                  Layout.fillWidth: true
+                  implicitHeight: 42
+                  FieldText {
+                    id: urlField
+                    anchors.fill: parent
+                    placeholderText: "https://httpbin.org/anything"
+                    text: "https://httpbin.org/anything"
+                  }
+                }
+
+                // Timeout
+                Item {
+                  Layout.fillWidth: true
+                  implicitHeight: 42
+                  FieldText {
+                    id: timeoutField
+                    anchors.fill: parent
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    placeholderText: "timeout ms (0 disables)"
+                    text: "0"
+                  }
+                }
+
+                // Headers (full row)
+                Item {
+                  Layout.columnSpan: root.narrow ? 1 : 3
+                  Layout.fillWidth: true
+                  implicitHeight: 110
+
+                  Column {
+                    anchors.fill: parent
+                    spacing: 6
+                    BodyText { text: "Headers (one per line). Example:\nContent-Type: application/json\nAuthorization: Bearer <token>" }
+                    FieldArea {
+                      id: headersArea
+                      width: parent.width
+                      height: 72
+                      text: ""
+                    }
+                  }
                 }
               }
 
-              DarkTextArea {
-                id: headersArea
-                Layout.fillWidth: true
-                Layout.preferredHeight: 90
-                placeholderText: "Headers (one per line)\nExample:\nContent-Type: application/json\nAuthorization: Bearer <token>"
-                text: ""
-              }
-
-              RowLayout {
-                Layout.fillWidth: true
+              // Buttons: wrap safely on mobile
+              Flow {
+                width: parent.width
                 spacing: 10
 
-                DarkButton {
-                  Layout.fillWidth: true
+                PillButton {
                   text: "Send (text/json)"
-                  onClicked: { ensureXhr(); root.sendTextOrJson() }
+                  onClicked: {
+                    ensureXhr()
+                    sendTextOrJson()
+                  }
                 }
-
-                DarkButton {
+                PillButton {
                   text: "GET /get"
                   onClicked: {
-                    ensureXhr()
-                    methodBox.currentIndex = 0
                     urlField.text = "https://httpbin.org/get"
+                    methodBox.currentIndex = 0
                     timeoutField.text = "0"
                     headersArea.text = ""
                     bodyArea.text = ""
-                    root.sendTextOrJson()
+                    sendTextOrJson()
                   }
                 }
-
-                DarkButton {
+                PillButton {
                   text: "Redirect"
                   onClicked: {
-                    ensureXhr()
-                    methodBox.currentIndex = 0
                     urlField.text = "https://httpbin.org/redirect/1"
+                    methodBox.currentIndex = 0
                     timeoutField.text = "0"
                     headersArea.text = ""
                     bodyArea.text = ""
-                    root.sendTextOrJson()
+                    sendTextOrJson()
                   }
                 }
-
-                DarkButton {
+                PillButton {
                   text: "Timeout"
                   onClicked: {
-                    ensureXhr()
-                    methodBox.currentIndex = 0
                     urlField.text = "https://httpbin.org/delay/5"
+                    methodBox.currentIndex = 0
                     timeoutField.text = "1000"
                     headersArea.text = ""
                     bodyArea.text = ""
-                    root.sendTextOrJson()
+                    sendTextOrJson()
                   }
                 }
-
-                DarkButton { text: "Abort"; onClicked: { if (xhr) xhr.abort() } }
+                PillButton {
+                  text: "Abort"
+                  onClicked: {
+                    if (xhr) xhr.abort()
+                  }
+                }
               }
             }
           }
 
-          // BODY + MULTIPART
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
+          // Body + Multipart (responsive grid)
+          GridLayout {
+            width: parent.width
+            columns: root.narrow ? 1 : 2
+            columnSpacing: 12
+            rowSpacing: 12
 
+            // Body
             Card {
               Layout.fillWidth: true
-              ColumnLayout {
+              implicitHeight: bodyCol.implicitHeight + 20
+
+              Column {
+                id: bodyCol
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 14
                 spacing: 10
-                H3 { text: "Body (Text / JSON)" }
-                DarkTextArea {
+
+                H2 { text: "Body (Text / JSON)" }
+
+                BodyText { text: "For POST/PUT/PATCH: paste JSON or text here. This tester sends it as a *raw string*." }
+
+                FieldArea {
                   id: bodyArea
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: 210
-                  placeholderText: "If POST/PUT: paste JSON here (string)."
+                  width: parent.width
+                  height: root.narrow ? 160 : 200
                   text: "{\n  \"hello\": \"qfield\",\n  \"when\": \"" + (new Date()).toISOString() + "\"\n}"
                 }
-                HelpText {
-                  text:
-                    "This button sends the body as a raw string (no QVariantMap conversion). " +
-                    "If you want JSON parsing in C++, set Content-Type: application/json and return JSON from server."
+
+                BodyText {
+                  text: "If you want C++ to parse JSON, set header Content-Type: application/json and parse responseType/responseText as needed."
                 }
               }
             }
 
+            // Multipart
             Card {
               Layout.fillWidth: true
-              ColumnLayout {
+              implicitHeight: mpCol.implicitHeight + 20
+
+              Column {
+                id: mpCol
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 14
                 spacing: 10
-                H3 { text: "Multipart upload" }
 
-                HelpText {
-                  text:
-                    "Important: core XmlHttpRequest blocks uploading arbitrary local files for safety.\n" +
-                    "To test multipart: copy the file INTO the current QField project folder (or QFieldCloud local folder) and pick it from there."
+                H2 { text: "Multipart upload" }
+
+                BodyText {
+                  text: "Important: core XmlHttpRequest may block arbitrary local uploads.\nTo test: copy the file INTO the current QField project folder (or cloud project folder), then pick it."
                 }
 
-                RowLayout {
-                  Layout.fillWidth: true
+                Row {
+                  width: parent.width
                   spacing: 10
-                  DarkTextField {
+                  FieldText {
                     id: fileField
-                    Layout.fillWidth: true
+                    width: Math.max(120, parent.width - pickBtn.implicitWidth - 10)
                     placeholderText: "Picked file URL (file:///...)"
-                    text: ""
+                    readOnly: true
                   }
-                  DarkButton { text: "Pick…"; onClicked: fileDialog.open() }
-                }
-
-                RowLayout {
-                  Layout.fillWidth: true
-                  spacing: 10
-                  DarkTextField {
-                    id: uploadNameField
-                    Layout.fillWidth: true
-                    placeholderText: "file field name"
-                    text: "file"
-                  }
-                  DarkTextField {
-                    id: uploadNoteField
-                    Layout.fillWidth: true
-                    placeholderText: "note"
-                    text: "Hello from QField plugin"
+                  PillButton {
+                    id: pickBtn
+                    text: "Pick…"
+                    onClicked: fileDialog.open()
                   }
                 }
 
-                RowLayout {
-                  Layout.fillWidth: true
+                Row {
+                  width: parent.width
                   spacing: 10
-                  DarkButton {
-                    Layout.fillWidth: true
+                  Column {
+                    width: parent.width * 0.55
+                    spacing: 6
+                    BodyText { text: "file field name" }
+                    FieldText { id: uploadNameField; width: parent.width; text: "file" }
+                  }
+                  Column {
+                    width: parent.width * 0.45 - 10
+                    spacing: 6
+                    BodyText { text: "note" }
+                    FieldText { id: uploadNoteField; width: parent.width; text: "Hello from QField plugin" }
+                  }
+                }
+
+                Flow {
+                  width: parent.width
+                  spacing: 10
+
+                  PillButton {
                     text: "Upload to httpbin.org/post"
                     onClicked: {
                       ensureXhr()
-                      methodBox.currentIndex = 1 // POST
                       urlField.text = "https://httpbin.org/post"
-                      root.sendMultipart()
+                      methodBox.currentIndex = 1 // POST
+                      sendMultipart()
                     }
                   }
-                  DarkButton { text: "Abort"; onClicked: { if (xhr) xhr.abort() } }
+
+                  PillButton {
+                    text: "Quick: set Content-Type multipart"
+                    onClicked: {
+                      // add a Content-Type header line if missing
+                      const lower = headersArea.text.toLowerCase()
+                      if (lower.indexOf("content-type:") === -1) {
+                        headersArea.text = (headersArea.text.trim().length ? headersArea.text.trim() + "\n" : "") + "Content-Type: multipart/form-data"
+                      }
+                    }
+                  }
                 }
               }
             }
           }
 
-          // RESPONSE
+          // Response
           Card {
-            ColumnLayout {
-              spacing: 8
-              H3 { text: "Response" }
+            width: parent.width
+            implicitHeight: respCol.implicitHeight + 20
 
-              RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-                Label {
-                  Layout.fillWidth: true
-                  color: root.fg
-                  text: xhr ? ("status: " + xhr.status + " " + xhr.statusText) : "status: (no xhr)"
-                  elide: Label.ElideRight
-                }
-                Label {
-                  Layout.fillWidth: true
-                  color: root.muted
-                  text: xhr ? ("type: " + xhr.responseType) : ""
-                  horizontalAlignment: Text.AlignRight
-                  elide: Label.ElideRight
-                }
-              }
-
-              Label {
-                Layout.fillWidth: true
-                color: root.muted
-                text: xhr ? ("url: " + xhr.responseUrl) : ""
-                elide: Label.ElideRight
-              }
-
-              ScrollView {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 220
-                clip: true
-                contentItem: DarkTextArea {
-                  readOnly: true
-                  text: xhr ? xhr.responseText : ""
-                }
-              }
-            }
-          }
-
-          // LOG
-          Card {
-            ColumnLayout {
+            Column {
+              id: respCol
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 14
               spacing: 10
-              H3 { text: "Event log" }
 
-              RowLayout {
-                Layout.fillWidth: true
+              H2 { text: "Response" }
+
+              Row {
+                width: parent.width
                 spacing: 10
-                DarkButton { text: "Clear"; onClicked: logModel.clear() }
-                DarkButton { text: "Run mini self-test"; onClicked: root.runSelfTest() }
-                Item { Layout.fillWidth: true }
-                Label {
+                Text {
+                  width: parent.width * 0.6
+                  color: root.fg
+                  elide: Text.ElideRight
+                  text: xhr ? ("status: " + xhr.status + " " + xhr.statusText) : "status: (no xhr)"
+                }
+                Text {
+                  width: parent.width * 0.4 - 10
                   color: root.muted
+                  horizontalAlignment: Text.AlignRight
+                  elide: Text.ElideRight
+                  text: xhr ? ("type: " + xhr.responseType) : ""
+                }
+              }
+
+              Text {
+                width: parent.width
+                color: root.muted
+                elide: Text.ElideRight
+                text: xhr ? ("url: " + xhr.responseUrl) : ""
+              }
+
+              FieldArea {
+                width: parent.width
+                height: root.narrow ? 170 : 220
+                readOnly: true
+                text: xhr ? xhr.responseText : ""
+              }
+            }
+          }
+
+          // Log
+          Card {
+            width: parent.width
+            implicitHeight: logCol.implicitHeight + 20
+
+            Column {
+              id: logCol
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 14
+              spacing: 10
+
+              Row {
+                width: parent.width
+                spacing: 10
+                H2 { text: "Event log" }
+                Item { width: 1; height: 1 } // spacer
+              }
+
+              Row {
+                width: parent.width
+                spacing: 10
+                PillButton {
+                  text: "Clear"
+                  onClicked: logModel.clear()
+                }
+                PillButton {
+                  text: "Self-test (GET/redirect/timeout)"
+                  onClicked: runSelfTest()
+                }
+                Text {
+                  width: parent.width - 320
+                  color: root.muted
+                  elide: Text.ElideRight
+                  verticalAlignment: Text.AlignVCenter
                   text: xhr ? ("readyState: " + root.readyStateName(xhr.readyState)) : ""
                 }
               }
 
               Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 260
+                width: parent.width
+                height: root.narrow ? 220 : 260
                 radius: 10
-                color: root.field
+                color: "#141414"
                 border.color: root.border
                 border.width: 1
+                clip: true
 
                 ListView {
                   anchors.fill: parent
@@ -564,18 +662,20 @@ Item {
                     width: ListView.view.width
                     color: root.fg
                     font.pixelSize: 12
-                    text: "[" + t + "] " + m
                     wrapMode: Text.Wrap
+                    text: "[" + t + "] " + m
                   }
                 }
               }
             }
           }
+
+          Item { width: 1; height: 12 } // bottom breathing room
         }
       }
     }
 
-    onOpened: root.log("Panel opened")
+    onOpened: root.log("Panel opened (" + width + "x" + height + "), narrow=" + root.narrow)
     onClosed: root.log("Panel closed")
   }
 
@@ -588,7 +688,7 @@ Item {
     }
   }
 
-  //request helpers
+  // request helpers
   function applyHeaders() {
     const lines = headersArea.text.split("\n")
     for (let i = 0; i < lines.length; i++) {
@@ -648,10 +748,8 @@ Item {
 
     applyHeaders()
 
-    // DO NOT force Content-Type: multipart/form-data here.
-    // If you set it without boundary, some stacks get confused.
-    // Core will auto-switch to multipart when it sees file:// values.
-    // xhr.setRequestHeader("Content-Type", "multipart/form-data")
+    // Force multipart (core checks for multipart/form-data)
+    xhr.setRequestHeader("Content-Type", "multipart/form-data")
 
     const body = {}
     body[uploadNameField.text.trim() || "file"] = fileUrl
@@ -661,7 +759,7 @@ Item {
     xhr.send(body)
   }
 
-  // mini self-test
+  // self-test
   property int selfTestStep: 0
   Timer {
     id: selfTestTimer
@@ -673,6 +771,7 @@ Item {
   function runSelfTest() {
     ensureXhr()
     selfTestStep = 0
+    logModel.clear()
     log("=== self-test start ===")
     nextSelfTestStep()
   }
@@ -682,8 +781,8 @@ Item {
     selfTestStep += 1
 
     if (selfTestStep === 1) {
-      methodBox.currentIndex = 0
       urlField.text = "https://httpbin.org/get"
+      methodBox.currentIndex = 0
       timeoutField.text = "0"
       headersArea.text = ""
       bodyArea.text = ""
@@ -693,8 +792,8 @@ Item {
     }
 
     if (selfTestStep === 2) {
-      methodBox.currentIndex = 0
       urlField.text = "https://httpbin.org/redirect/1"
+      methodBox.currentIndex = 0
       timeoutField.text = "0"
       headersArea.text = ""
       bodyArea.text = ""
@@ -704,8 +803,8 @@ Item {
     }
 
     if (selfTestStep === 3) {
-      methodBox.currentIndex = 0
       urlField.text = "https://httpbin.org/delay/5"
+      methodBox.currentIndex = 0
       timeoutField.text = "1000"
       headersArea.text = ""
       bodyArea.text = ""
@@ -714,10 +813,10 @@ Item {
       return
     }
 
-    log("=== self-test queued requests done (watch log for callbacks) ===")
+    log("=== self-test queued (watch callbacks) ===")
   }
 
-  // Signals (in case QJSValue callback properties don't fire)
+  // also listen to C++ signals
   Connections {
     target: xhr
     function onReadyStateChanged() {
@@ -733,6 +832,6 @@ Item {
     iface.mainWindow().displayToast("XHR Tester plugin loaded")
     iface.addItemToPluginsToolbar(toolbarButton)
     ensureXhr()
-    log("Plugin loaded; toolbar button added")
+    root.log("Plugin loaded; toolbar button added")
   }
 }
