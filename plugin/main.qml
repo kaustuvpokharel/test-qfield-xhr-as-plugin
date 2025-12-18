@@ -121,33 +121,49 @@ Item {
   }
 
   component FieldText: TextField {
-    padding: 10
+    id: tf
     color: root.fg
     placeholderTextColor: root.muted
     selectionColor: "#355f1a"
     selectedTextColor: root.fg
-    wrapMode: Text.Wrap
-    width: parent.width
+
+    clip: true
+    verticalAlignment: TextInput.AlignVCenter
+
+    leftPadding: 12
+    rightPadding: 12
+    topPadding: 10
+    bottomPadding: 10
+
+    implicitHeight: Math.max(44, contentHeight + topPadding + bottomPadding)
+
     background: Rectangle {
       radius: 10
       color: "#141414"
-      border.color: parent.activeFocus ? root.accent : root.border
+      border.color: tf.activeFocus ? root.accent : root.border
       border.width: 1
     }
   }
 
   component FieldArea: TextArea {
-    padding: 10
+    id: ta
     color: root.fg
     placeholderTextColor: root.muted
     selectionColor: "#355f1a"
     selectedTextColor: root.fg
     wrapMode: TextArea.Wrap
-    width: parent.width
+
+    clip: true
+
+    leftPadding: 12
+    rightPadding: 12
+    topPadding: 10
+    bottomPadding: 10
+
     background: Rectangle {
       radius: 10
       color: "#141414"
-      border.color: parent.activeFocus ? root.accent : root.border
+      border.color: ta.activeFocus ? root.accent : root.border
       border.width: 1
     }
   }
@@ -172,22 +188,25 @@ Item {
   }
 
   component NiceCombo: ComboBox {
+    id: cb
     padding: 10
-    implicitHeight: 42
+
     background: Rectangle {
       radius: 10
       color: "#141414"
-      border.color: parent.activeFocus ? root.accent : root.border
+      border.color: cb.activeFocus ? root.accent : root.border
       border.width: 1
     }
+
     contentItem: Text {
-      text: parent.displayText
+      text: cb.displayText
       color: root.fg
       verticalAlignment: Text.AlignVCenter
       elide: Text.ElideRight
       leftPadding: 8
-      rightPadding: 24
+      rightPadding: 28
     }
+
     indicator: Canvas {
       width: 14; height: 14
       anchors.right: parent.right
@@ -195,27 +214,37 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
       onPaint: {
         const ctx = getContext("2d")
-        ctx.clearRect(0,0,width,height)
+        ctx.clearRect(0, 0, width, height)
         ctx.beginPath()
-        ctx.moveTo(2,4); ctx.lineTo(12,4); ctx.lineTo(7,10); ctx.closePath()
+        ctx.moveTo(2, 4); ctx.lineTo(12, 4); ctx.lineTo(7, 10); ctx.closePath()
         ctx.fillStyle = root.fg
         ctx.fill()
       }
     }
+
     popup: Popup {
-      y: parent.height + 6
-      width: parent.width
-      implicitHeight: Math.min(contentItem.implicitHeight, 280)
-      background: Rectangle { radius: 10; color: "#1a1a1a"; border.color: root.border; border.width: 1 }
+      id: pop
+      y: cb.height + 6
+      width: cb.width
+      implicitHeight: Math.min(list.contentHeight, 280)
+
+      background: Rectangle {
+        radius: 10
+        color: "#1a1a1a"
+        border.color: root.border
+        border.width: 1
+      }
+
       contentItem: ListView {
+        id: list
         clip: true
-        implicitHeight: contentHeight
-        model: parent.popup.visible ? parent.delegateModel : null
-        currentIndex: parent.highlightedIndex
+        model: cb.delegateModel
+        currentIndex: cb.highlightedIndex
+
         delegate: ItemDelegate {
           width: ListView.view.width
           text: modelData
-          highlighted: index === parent.highlightedIndex
+          highlighted: index === cb.highlightedIndex
         }
       }
     }
@@ -354,28 +383,20 @@ Item {
                 }
 
                 // URL
-                Item {
+                FieldText {
+                  id: urlField
+                  placeholderText: "https://httpbin.org/anything"
+                  text: "https://httpbin.org/anything"
                   Layout.fillWidth: true
-                  implicitHeight: 42
-                  FieldText {
-                    id: urlField
-                    anchors.fill: parent
-                    placeholderText: "https://httpbin.org/anything"
-                    text: "https://httpbin.org/anything"
-                  }
                 }
 
                 // Timeout
-                Item {
+                FieldText {
+                  id: timeoutField
+                  inputMethodHints: Qt.ImhDigitsOnly
+                  placeholderText: "timeout ms (0 disables)"
+                  text: "0"
                   Layout.fillWidth: true
-                  implicitHeight: 42
-                  FieldText {
-                    id: timeoutField
-                    anchors.fill: parent
-                    inputMethodHints: Qt.ImhDigitsOnly
-                    placeholderText: "timeout ms (0 disables)"
-                    text: "0"
-                  }
                 }
 
                 // Headers (full row)
@@ -385,13 +406,16 @@ Item {
                   implicitHeight: 110
 
                   Column {
-                    anchors.fill: parent
+                    Layout.columnSpan: root.narrow ? 1 : 3
+                    Layout.fillWidth: true
                     spacing: 6
+
                     BodyText { text: "Headers (one per line). Example:\nContent-Type: application/json\nAuthorization: Bearer <token>" }
+
                     FieldArea {
                       id: headersArea
-                      width: parent.width
-                      height: 72
+                      Layout.fillWidth: true
+                      Layout.preferredHeight: 90
                       text: ""
                     }
                   }
@@ -480,11 +504,9 @@ Item {
 
                 FieldArea {
                   id: bodyArea
-                  width: parent.width
+                  Layout.fillWidth: true
                   height: root.narrow ? 160 : 200
-                  BodyText{
-                    text: "{\n  \"hello\": \"qfield\",\n  \"when\": \"" + (new Date()).toISOString() + "\"\n}"
-                  }
+                  text: "{\n  \"hello\": \"qfield\",\n  \"when\": \"" + (new Date()).toISOString() + "\"\n}"
                 }
 
                 BodyText {
