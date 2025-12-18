@@ -14,6 +14,8 @@ Item {
   readonly property color muted: "#b7b7b7"
   readonly property color accent: "#7CFC00"
 
+  readonly property int cardPad: 14
+
   readonly property bool narrow: (panel.visible ? panel.width : 0) < 720
 
   ListModel { id: logModel }
@@ -86,12 +88,13 @@ Item {
     root.log("Reset complete")
   }
 
-  // ---------------- UI components ----------------
+  //UI ocmponents
   component Card: Rectangle {
     radius: 12
     color: root.cardBg
     border.color: root.border
     border.width: 1
+    padding: 15
   }
 
   component H1: Text {
@@ -99,6 +102,7 @@ Item {
     font.pixelSize: 22
     font.bold: true
     wrapMode: Text.Wrap
+    width: parent.width
     elide: Text.ElideRight
   }
 
@@ -107,11 +111,13 @@ Item {
     font.pixelSize: 16
     font.bold: true
     wrapMode: Text.Wrap
+    width: parent.width
   }
 
   component BodyText: Text {
     color: root.muted
     font.pixelSize: 12
+    width: parent.width
     wrapMode: Text.Wrap
   }
 
@@ -121,6 +127,8 @@ Item {
     placeholderTextColor: root.muted
     selectionColor: "#355f1a"
     selectedTextColor: root.fg
+    wrapMode: Text.Wrap
+    width: parent.width
     background: Rectangle {
       radius: 10
       color: "#141414"
@@ -136,6 +144,7 @@ Item {
     selectionColor: "#355f1a"
     selectedTextColor: root.fg
     wrapMode: TextArea.Wrap
+    width: parent.width
     background: Rectangle {
       radius: 10
       color: "#141414"
@@ -159,6 +168,7 @@ Item {
       horizontalAlignment: Text.AlignHCenter
       verticalAlignment: Text.AlignVCenter
       elide: Text.ElideRight
+      width: parent.width
     }
   }
 
@@ -291,6 +301,7 @@ Item {
               spacing: 6
 
               H1 { text: "XmlHttpRequest Tester" }
+
               BodyText {
                 text: "Goal: validate core XmlHttpRequest behavior (readyState, headers, JSON/text, redirect, timeout, abort, multipart)."
               }
@@ -302,6 +313,7 @@ Item {
               text: "Reset XHR"
               onClicked: resetXhr()
             }
+
             PillButton {
               text: "Close"
               onClicked: panel.close()
@@ -317,7 +329,8 @@ Item {
               id: reqCol
               anchors.left: parent.left
               anchors.right: parent.right
-              anchors.margins: 14
+              anchors.top: parent.top
+              anchors.margins: root.cardPad
               spacing: 10
 
               H2 { text: "Request" }
@@ -386,7 +399,6 @@ Item {
                 }
               }
 
-              // Buttons: wrap safely on mobile
               Flow {
                 width: parent.width
                 spacing: 10
@@ -398,6 +410,7 @@ Item {
                     sendTextOrJson()
                   }
                 }
+
                 PillButton {
                   text: "GET /get"
                   onClicked: {
@@ -409,6 +422,7 @@ Item {
                     sendTextOrJson()
                   }
                 }
+
                 PillButton {
                   text: "Redirect"
                   onClicked: {
@@ -420,6 +434,7 @@ Item {
                     sendTextOrJson()
                   }
                 }
+
                 PillButton {
                   text: "Timeout"
                   onClicked: {
@@ -431,6 +446,7 @@ Item {
                     sendTextOrJson()
                   }
                 }
+
                 PillButton {
                   text: "Abort"
                   onClicked: {
@@ -441,23 +457,22 @@ Item {
             }
           }
 
-          // Body + Multipart (responsive grid)
           GridLayout {
             width: parent.width
             columns: root.narrow ? 1 : 2
             columnSpacing: 12
             rowSpacing: 12
 
-            // Body
             Card {
               Layout.fillWidth: true
-              implicitHeight: bodyCol.implicitHeight + 20
+              implicitHeight: bodyCol.implicitHeight + root.cardPad * 2
 
               Column {
                 id: bodyCol
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 14
+                anchors.top: parent.top
+                anchors.margins: root.cardPad
                 spacing: 10
 
                 H2 { text: "Body (Text / JSON)" }
@@ -468,7 +483,9 @@ Item {
                   id: bodyArea
                   width: parent.width
                   height: root.narrow ? 160 : 200
-                  text: "{\n  \"hello\": \"qfield\",\n  \"when\": \"" + (new Date()).toISOString() + "\"\n}"
+                  BodyText{
+                    text: "{\n  \"hello\": \"qfield\",\n  \"when\": \"" + (new Date()).toISOString() + "\"\n}"
+                  }
                 }
 
                 BodyText {
@@ -480,30 +497,33 @@ Item {
             // Multipart
             Card {
               Layout.fillWidth: true
-              implicitHeight: mpCol.implicitHeight + 20
+              implicitHeight: mpCol.implicitHeight + root.cardPad * 2
 
               Column {
                 id: mpCol
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 14
+                anchors.top: parent.top
+                anchors.margins: root.cardPad
                 spacing: 10
 
                 H2 { text: "Multipart upload" }
 
                 BodyText {
-                  text: "Important: core XmlHttpRequest may block arbitrary local uploads.\nTo test: copy the file INTO the current QField project folder (or cloud project folder), then pick it."
+                  text: "Important: core XmlHttpRequest may block arbitrary local uploads. To test: copy the file INTO the current QField project folder (or cloud project folder), then pick it."
                 }
 
                 Row {
                   width: parent.width
                   spacing: 10
+
                   FieldText {
                     id: fileField
                     width: Math.max(120, parent.width - pickBtn.implicitWidth - 10)
                     placeholderText: "Picked file URL (file:///...)"
                     readOnly: true
                   }
+
                   PillButton {
                     id: pickBtn
                     text: "Pick…"
@@ -514,12 +534,14 @@ Item {
                 Row {
                   width: parent.width
                   spacing: 10
+
                   Column {
                     width: parent.width * 0.55
                     spacing: 6
                     BodyText { text: "file field name" }
                     FieldText { id: uploadNameField; width: parent.width; text: "file" }
                   }
+
                   Column {
                     width: parent.width * 0.45 - 10
                     spacing: 6
@@ -560,13 +582,14 @@ Item {
           // Response
           Card {
             width: parent.width
-            implicitHeight: respCol.implicitHeight + 20
+            implicitHeight: respCol.implicitHeight + root.cardPad * 2
 
             Column {
               id: respCol
               anchors.left: parent.left
               anchors.right: parent.right
-              anchors.margins: 14
+              anchors.top: parent.top
+              anchors.margins: root.cardPad
               spacing: 10
 
               H2 { text: "Response" }
@@ -608,13 +631,14 @@ Item {
           // Log
           Card {
             width: parent.width
-            implicitHeight: logCol.implicitHeight + 20
+            implicitHeight: logCol.implicitHeight + root.cardPad * 2
 
             Column {
               id: logCol
               anchors.left: parent.left
               anchors.right: parent.right
-              anchors.margins: 14
+              anchors.top: parent.top
+              anchors.margins: root.cardPad
               spacing: 10
 
               Row {
@@ -748,7 +772,6 @@ Item {
 
     applyHeaders()
 
-    // Force multipart (core checks for multipart/form-data)
     xhr.setRequestHeader("Content-Type", "multipart/form-data")
 
     const body = {}
@@ -761,6 +784,7 @@ Item {
 
   // self-test
   property int selfTestStep: 0
+
   Timer {
     id: selfTestTimer
     interval: 250
