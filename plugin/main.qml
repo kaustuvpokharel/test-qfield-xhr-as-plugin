@@ -43,35 +43,39 @@ Item {
 
   property var xhr: null
 
-  Component {
-    id: xhrComponent
-    XmlHttpRequest {
-      onreadystatechange: function() {
-        root.log("onreadystatechange: " + root.readyStateName(readyState) + " (" + readyState + "), status=" + status)
-      }
-      ondownloadprogress: function(received, total) { root.log("ondownloadprogress: " + received + " / " + total) }
-      onuploadprogress: function(sent, total) { root.log("onuploadprogress: " + sent + " / " + total) }
-      onredirected: function(url) { root.log("onredirected: " + url) }
-      ontimeout: function() { root.log("ontimeout") }
-      onaborted: function() { root.log("onaborted") }
-      onerror: function(code, message) { root.log("onerror: code=" + code + " message=" + message) }
+  function wireXhrCallbacks(x) {
+    x.onreadystatechange = function() {
+      root.log("onreadystatechange: " + root.readyStateName(x.readyState) +
+               " (" + x.readyState + "), status=" + x.status)
     }
+    x.ondownloadprogress = function(received, total) { root.log("ondownloadprogress: " + received + " / " + total) }
+    x.onuploadprogress   = function(sent, total)     { root.log("onuploadprogress: " + sent + " / " + total) }
+    x.onredirected       = function(url)             { root.log("onredirected: " + url) }
+    x.ontimeout          = function()                { root.log("ontimeout") }
+    x.onaborted          = function()                { root.log("onaborted") }
+    x.onerror            = function(code, message)   { root.log("onerror: code=" + code + " message=" + message) }
   }
 
   function ensureXhr() {
     if (xhr) return
-    xhr = xhrComponent.createObject(root)
-    root.log("XmlHttpRequest created")
+
+    xhr = QfieldHttpRequest.newRequest(root)   // <-- parented to root
+    wireXhrCallbacks(xhr)
+
+    root.log("QfieldHttpRequest created via newRequest()")
   }
 
   function resetXhr() {
     if (xhr) {
       try { xhr.abort() } catch(e) {}
-      xhr.destroy()
+
+      // prefer deleteLater over destroy() for C++ created objects
+      xhr.deleteLater()
       xhr = null
     }
-    ensureXhr()
+
     logModel.clear()
+    ensureXhr()
     root.log("Reset complete")
   }
 
@@ -295,16 +299,13 @@ Item {
     popup: Popup {
       id: pop
 
-      // IMPORTANT: re-parent popup so it's not clipped / dimmed by Flickable/Card
       parent: panel.contentItem
-      modal: false
+      modal: true        // <-- important: grabs mouse properly
       dim: false
       focus: true
       closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
       width: cb.width
-
-      // because parent changed, position must be mapped
       x: cb.mapToItem(parent, 0, cb.height + 6).x
       y: cb.mapToItem(parent, 0, cb.height + 6).y
 
@@ -346,6 +347,8 @@ Item {
             id: mouse
             anchors.fill: parent
             hoverEnabled: true
+            preventStealing: true     // <-- critical inside Flickable
+            onPressed: mouse.accepted = true
             onClicked: {
               cb.currentIndex = index
               pop.close()
@@ -579,14 +582,14 @@ Item {
                 Layout.fillWidth: true
                 spacing: 10
 
-                H1 { text: "XmlHttpRequest Tester"; Layout.fillWidth: true }
+                H1 { text: "QfieldHttpRequest Tester"; Layout.fillWidth: true }
 
                 PillButton { text: "Reset XHR"; onClicked: resetXhr() }
                 PillButton { text: "Close"; onClicked: panel.close() }
               }
 
               BodyText {
-                text: "Goal: validate core XmlHttpRequest behavior (readyState, headers, JSON/text, redirect, timeout, abort, multipart)."
+                text: "Goal: validate core QfieldHttpRequest behavior (readyState, headers, JSON/text, redirect, timeout, abort, multipart)."
               }
             }
 
@@ -742,7 +745,7 @@ Item {
                   H2 { text: "Multipart upload" }
 
                   BodyText {
-                    text: "Important: core XmlHttpRequest may block arbitrary local uploads. To test: copy the file INTO the current QField project folder (or cloud project folder), then pick it."
+                    text: "Important: core QfieldHttpRequest may block arbitrary local uploads. To test: copy the file INTO the current QField project folder (or cloud project folder), then pick it."
                   }
 
                   RowLayout {
